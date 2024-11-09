@@ -1,8 +1,8 @@
 # 一个由AI驱动开发的应用示例
 
-![alt text](_readme/image.png)
+![alt text](_readme/example.gif)
 
-这是一个由OpenAPI o1-preview-1开发的应用示例。共花费了3个小时左右。
+这是一个由OpenAPI o1-preview开发的应用示例。共花费了3个小时左右。
 
 完成的对话见：https://chatgpt.com/share/672f1c61-8df8-8011-abe2-65a92a93e3f2
 
