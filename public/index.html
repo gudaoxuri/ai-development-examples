@@ -1,0 +1,149 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>岗位要求与知识图谱系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="filterBox">
+        <label for="jobNameSelect">岗位名称:</label>
+        <select id="jobNameSelect"></select>
+
+        <label for="jobLevelSelect">岗位级别:</label>
+        <select id="jobLevelSelect">
+            <option value="">全部</option>
+            <option value="实习">实习</option>
+            <option value="初级">初级</option>
+            <option value="中级">中级</option>
+            <option value="高级">高级</option>
+        </select>
+
+        <label for="requirementSelect">知识点要求:</label>
+        <select id="requirementSelect">
+            <option value="">全部</option>
+            <option value="了解">了解</option>
+            <option value="掌握">掌握</option>
+            <option value="熟悉">熟悉</option>
+            <option value="精通">精通</option>
+        </select>
+
+        <button id="filterButton">过滤</button>
+    </div>
+
+    <div class="control-buttons">
+        <button id="expandAllButton">展开所有</button>
+        <button id="collapseAllButton">折叠所有</button>
+        <button id="bulkEditButton">批量编辑</button>
+        <button id="bulkEditCompleteButton" style="display:none;">完成</button>
+    </div>
+
+    <div id="mindMapContainer">
+        <svg id="mindMap" width="100%" height="100%"></svg>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Relation Details at the bottom -->
+    <div id="relationDetails">
+        <div class="header">
+            岗位知识关系列表
+            <span class="close-button" onclick="closeRelationDetails()">×</span>
+        </div>
+        <div class="content">
+            <div id="relationList"></div>
+            <button onclick="openRelationForm()">新建岗位知识关系</button>
+        </div>
+    </div>
+
+    <!-- Modal for editing/creating job knowledge relation -->
+    <div id="relationFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                编辑岗位知识关系
+                <span class="close-button" onclick="closeRelationFormModal()">×</span>
+            </div>
+            <form id="relationForm" onsubmit="saveRelation(event)">
+                <input type="hidden" id="relationId">
+                <div class="form-group">
+                    <label for="relationJobName">岗位名称:</label>
+                    <select id="relationJobName"></select>
+                </div>
+                <div class="form-group">
+                    <label for="relationJobLevel">岗位级别:</label>
+                    <select id="relationJobLevel">
+                        <option value="实习">实习</option>
+                        <option value="初级">初级</option>
+                        <option value="中级">中级</option>
+                        <option value="高级">高级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="relationRequirement">知识点要求:</label>
+                    <select id="relationRequirement">
+                        <option value="了解">了解</option>
+                        <option value="掌握">掌握</option>
+                        <option value="熟悉">熟悉</option>
+                        <option value="精通">精通</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>是否必备:</label>
+                    <input type="checkbox" id="relationIsRequired">
+                </div>
+                <div class="form-group">
+                    <label>是否重要:</label>
+                    <input type="checkbox" id="relationIsImportant">
+                </div>
+                <button type="submit">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for bulk editing -->
+    <div id="bulkEditFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                批量编辑岗位知识关系
+                <span class="close-button" onclick="closeBulkEditFormModal()">×</span>
+            </div>
+            <form id="bulkEditForm" onsubmit="saveBulkRelation(event)">
+                <div class="form-group">
+                    <label for="bulkRelationJobName">岗位名称:</label>
+                    <select id="bulkRelationJobName"></select>
+                </div>
+                <div class="form-group">
+                    <label for="bulkRelationJobLevel">岗位级别:</label>
+                    <select id="bulkRelationJobLevel">
+                        <option value="实习">实习</option>
+                        <option value="初级">初级</option>
+                        <option value="中级">中级</option>
+                        <option value="高级">高级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulkRelationRequirement">知识点要求:</label>
+                    <select id="bulkRelationRequirement">
+                        <option value="了解">了解</option>
+                        <option value="掌握">掌握</option>
+                        <option value="熟悉">熟悉</option>
+                        <option value="精通">精通</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>是否必备:</label>
+                    <input type="checkbox" id="bulkRelationIsRequired">
+                </div>
+                <div class="form-group">
+                    <label>是否重要:</label>
+                    <input type="checkbox" id="bulkRelationIsImportant">
+                </div>
+                <button type="submit">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+/* public/style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    overflow: hidden;
+}
+#filterBox {
+    padding: 10px;
+    background-color: #f5f5f5;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 2;
+}
+#filterBox select {
+    margin-right: 10px;
+    padding: 5px;
+}
+#mindMapContainer {
+    position: absolute;
+    top: 70px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    background-color: #fff;
+}
+.tooltip {
+    position: absolute;
+    background: #fff;
+    padding: 8px;
+    border: 1px solid #ccc;
+    display: none;
+    pointer-events: none;
+    font-size: 12px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    z-index: 3;
+}
+.control-buttons {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    z-index: 2;
+}
+.control-buttons button {
+    margin: 5px;
+    padding: 5px 10px;
+}
+#relationDetails {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 40%;
+    background-color: #fff;
+    border-top: 1px solid #ccc;
+    overflow-y: auto;
+    display: none;
+    z-index: 2;
+}
+#relationDetails .header {
+    padding: 10px;
+    font-weight: bold;
+    position: relative;
+    border-bottom: 1px solid #ccc;
+}
+#relationDetails .close-button {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 18px;
+}
+#relationDetails .content {
+    padding: 10px;
+}
+/* Enhanced styles for better appearance */
+#mindMap rect {
+    cursor: pointer;
+}
+#mindMap text {
+    cursor: pointer;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+}
+table, th, td {
+    border: 1px solid #ccc;
+}
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+.modal {
+    position: fixed;
+    background: rgba(0,0,0,0.5);
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    width: 500px;
+    max-height: 80%;
+    overflow-y: auto;
+    border-radius: 5px;
+}
+.modal-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    position: relative;
+}
+.modal-header .close-button {
+    position: absolute;
+    right: 0;
+    top: 0;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 18px;
+}
+.form-group {
+    margin-bottom: 10px;
+}
+.form-group label {
+    display: inline-block;
+    width: 100px;
+}
+button {
+    cursor: pointer;
+}

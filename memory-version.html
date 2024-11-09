@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>岗位要求与知识图谱系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/sql-wasm.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        #filterBox {
+            padding: 10px;
+            background-color: #f5f5f5;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 2;
+        }
+        #filterBox select {
+            margin-right: 10px;
+            padding: 5px;
+        }
+        #mindMapContainer {
+            position: absolute;
+            top: 70px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .tooltip {
+            position: absolute;
+            background: #fff;
+            padding: 8px;
+            border: 1px solid #ccc;
+            display: none;
+            pointer-events: none;
+            font-size: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            z-index: 3;
+        }
+        .control-buttons {
+            position: fixed;
+            top: 70px;
+            right: 10px;
+            z-index: 2;
+        }
+        .control-buttons button {
+            margin: 5px;
+            padding: 5px 10px;
+        }
+        #relationDetails {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 40%;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            overflow-y: auto;
+            display: none;
+            z-index: 2;
+        }
+        #relationDetails .header {
+            padding: 10px;
+            font-weight: bold;
+            position: relative;
+            border-bottom: 1px solid #ccc;
+        }
+        #relationDetails .close-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 18px;
+        }
+        #relationDetails .content {
+            padding: 10px;
+        }
+        /* Enhanced styles for better appearance */
+        #mindMap rect {
+            cursor: pointer;
+        }
+        #mindMap text {
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .modal {
+            position: fixed;
+            background: rgba(0,0,0,0.5);
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+            border-radius: 5px;
+        }
+        .modal-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .modal-header .close-button {
+            position: absolute;
+            right: 0;
+            top: 0;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 18px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="filterBox">
+        <label for="jobNameSelect">岗位名称:</label>
+        <select id="jobNameSelect"></select>
+
+        <label for="jobLevelSelect">岗位级别:</label>
+        <select id="jobLevelSelect">
+            <option value="">全部</option>
+            <option value="实习">实习</option>
+            <option value="初级">初级</option>
+            <option value="中级">中级</option>
+            <option value="高级">高级</option>
+        </select>
+
+        <label for="requirementSelect">知识点要求:</label>
+        <select id="requirementSelect">
+            <option value="">全部</option>
+            <option value="了解">了解</option>
+            <option value="掌握">掌握</option>
+            <option value="熟悉">熟悉</option>
+            <option value="精通">精通</option>
+        </select>
+
+        <button id="filterButton">过滤</button>
+    </div>
+
+    <div class="control-buttons">
+        <button id="expandAllButton">展开所有</button>
+        <button id="collapseAllButton">折叠所有</button>
+        <button id="bulkEditButton">批量编辑</button>
+        <button id="bulkEditCompleteButton" style="display:none;">完成</button>
+    </div>
+
+    <div id="mindMapContainer">
+        <svg id="mindMap" width="100%" height="100%"></svg>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Relation Details at the bottom -->
+    <div id="relationDetails">
+        <div class="header">
+            岗位知识关系列表
+            <span class="close-button" onclick="closeRelationDetails()">×</span>
+        </div>
+        <div class="content">
+            <div id="relationList"></div>
+            <button onclick="openRelationForm()">新建岗位知识关系</button>
+        </div>
+    </div>
+
+    <!-- Modal for editing/creating job knowledge relation -->
+    <div id="relationFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                编辑岗位知识关系
+                <span class="close-button" onclick="closeRelationFormModal()">×</span>
+            </div>
+            <form id="relationForm" onsubmit="saveRelation(event)">
+                <input type="hidden" id="relationId">
+                <div class="form-group">
+                    <label for="relationJobName">岗位名称:</label>
+                    <select id="relationJobName"></select>
+                </div>
+                <div class="form-group">
+                    <label for="relationJobLevel">岗位级别:</label>
+                    <select id="relationJobLevel">
+                        <option value="实习">实习</option>
+                        <option value="初级">初级</option>
+                        <option value="中级">中级</option>
+                        <option value="高级">高级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="relationRequirement">知识点要求:</label>
+                    <select id="relationRequirement">
+                        <option value="了解">了解</option>
+                        <option value="掌握">掌握</option>
+                        <option value="熟悉">熟悉</option>
+                        <option value="精通">精通</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>是否必备:</label>
+                    <input type="checkbox" id="relationIsRequired">
+                </div>
+                <div class="form-group">
+                    <label>是否重要:</label>
+                    <input type="checkbox" id="relationIsImportant">
+                </div>
+                <button type="submit">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for bulk editing -->
+    <div id="bulkEditFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                批量编辑岗位知识关系
+                <span class="close-button" onclick="closeBulkEditFormModal()">×</span>
+            </div>
+            <form id="bulkEditForm" onsubmit="saveBulkRelation(event)">
+                <div class="form-group">
+                    <label for="bulkRelationJobName">岗位名称:</label>
+                    <select id="bulkRelationJobName"></select>
+                </div>
+                <div class="form-group">
+                    <label for="bulkRelationJobLevel">岗位级别:</label>
+                    <select id="bulkRelationJobLevel">
+                        <option value="实习">实习</option>
+                        <option value="初级">初级</option>
+                        <option value="中级">中级</option>
+                        <option value="高级">高级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulkRelationRequirement">知识点要求:</label>
+                    <select id="bulkRelationRequirement">
+                        <option value="了解">了解</option>
+                        <option value="掌握">掌握</option>
+                        <option value="熟悉">熟悉</option>
+                        <option value="精通">精通</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>是否必备:</label>
+                    <input type="checkbox" id="bulkRelationIsRequired">
+                </div>
+                <div class="form-group">
+                    <label>是否重要:</label>
+                    <input type="checkbox" id="bulkRelationIsImportant">
+                </div>
+                <button type="submit">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var db;
+        var SQL;
+        var knowledgeTree = [];
+        var knowledgeTreeMap = {};
+        var totalLeafCount = 0;
+        var svg;
+        var svgGroup;
+        var nodeWidth = 150;
+        var nodeHeight = 40;
+        var horizontalSpacing = 20;
+        var verticalSpacing = 80;
+        var filterConditions = {};
+        var zoomLevel = 1;
+        var panOffset = { x: 0, y: 0 };
+        var isBulkEditMode = false;
+        var selectedNodes = []; // 存储被选中节点的 KnowledgeId
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initSqlJs({
+                locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${filename}`
+            }).then(function(SQLLib) {
+                SQL = SQLLib;
+                db = new SQL.Database();
+                initDatabase();
+                initFilterBox();
+                initControlButtons();
+                initZoomAndPan();
+                loadDataAndRenderMindMap();
+            });
+        });
+
+        function initDatabase() {
+            var createTableStatements = `
+            CREATE TABLE JobCategory (
+                CategoryName TEXT PRIMARY KEY,
+                ParentCategoryName TEXT,
+                FOREIGN KEY (ParentCategoryName) REFERENCES JobCategory(CategoryName)
+            );
+
+            CREATE TABLE JobInfo (
+                JobName TEXT PRIMARY KEY,
+                JobCategoryName TEXT,
+                JobDescription TEXT,
+                FOREIGN KEY (JobCategoryName) REFERENCES JobCategory(CategoryName)
+            );
+
+            CREATE TABLE Knowledge (
+                KnowledgeId INTEGER PRIMARY KEY,
+                KnowledgeName TEXT NOT NULL,
+                KnowledgeDescription TEXT,
+                ParentKnowledgeId INTEGER,
+                FOREIGN KEY (ParentKnowledgeId) REFERENCES Knowledge(KnowledgeId)
+            );
+
+            CREATE TABLE JobKnowledgeRelation (
+                RelationId INTEGER PRIMARY KEY AUTOINCREMENT,
+                JobName TEXT,
+                JobLevel TEXT CHECK (JobLevel IN ('实习', '初级', '中级', '高级')),
+                KnowledgeId INTEGER,
+                KnowledgeRequirement TEXT CHECK (KnowledgeRequirement IN ('了解', '掌握', '熟悉', '精通')),
+                IsRequired INTEGER CHECK (IsRequired IN (0,1)),
+                IsImportant INTEGER CHECK (IsImportant IN (0,1)),
+                FOREIGN KEY (JobName) REFERENCES JobInfo(JobName),
+                FOREIGN KEY (KnowledgeId) REFERENCES Knowledge(KnowledgeId)
+            );
+            `;
+            db.exec(createTableStatements);
+
+            var insertStatements = `
+            -- Job Categories
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('技术', NULL);
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('开发', '技术');
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('测试', '技术');
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('运维', '技术');
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('前端', '开发');
+            INSERT INTO JobCategory (CategoryName, ParentCategoryName) VALUES ('后端', '开发');
+
+            -- Job Info
+            INSERT INTO JobInfo (JobName, JobCategoryName, JobDescription) VALUES ('平台开发工程师', '后端', '负责平台化系统的研发');
+            INSERT INTO JobInfo (JobName, JobCategoryName, JobDescription) VALUES ('软件测试工程师', '测试', '负责软件测试工作');
+            INSERT INTO JobInfo (JobName, JobCategoryName, JobDescription) VALUES ('前端开发工程师', '前端', '负责前端页面开发');
+            INSERT INTO JobInfo (JobName, JobCategoryName, JobDescription) VALUES ('系统运维工程师', '运维', '负责系统运维工作');
+
+            -- Knowledge Points
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (1, '计算机基础', NULL, NULL);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (2, '数据结构与算法', NULL, 1);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (3, '操作系统', NULL, 1);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (4, '网络原理', NULL, 1);
+
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (5, '编程语言', NULL, NULL);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (6, 'Java', NULL, 5);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (7, 'Python', NULL, 5);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (8, 'JavaScript', NULL, 5);
+
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (9, 'Web开发', NULL, NULL);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (10, '前端框架', NULL, 9);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (11, 'React', NULL, 10);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (12, 'Vue', NULL, 10);
+
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (13, '数据库', NULL, NULL);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (14, '关系型数据库', NULL, 13);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (15, 'MySQL', NULL, 14);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (16, 'PostgreSQL', NULL, 14);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (17, 'NoSQL数据库', NULL, 13);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (18, 'MongoDB', NULL, 17);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (19, 'Redis', NULL, 17);
+
+            -- Additional Knowledge Points
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (20, '软件测试', NULL, NULL);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (21, '功能测试', NULL, 20);
+            INSERT INTO Knowledge (KnowledgeId, KnowledgeName, KnowledgeDescription, ParentKnowledgeId) VALUES (22, '性能测试', NULL, 20);
+
+            -- Job Knowledge Relations
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('平台开发工程师', '初级', 6, '熟悉', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('平台开发工程师', '高级', 6, '精通', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('前端开发工程师', '初级', 8, '熟悉', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('前端开发工程师', '初级', 11, '了解', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('前端开发工程师', '高级', 11, '精通', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('软件测试工程师', '高级', 2, '熟悉', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('软件测试工程师', '中级', 21, '掌握', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('系统运维工程师', '中级', 3, '掌握', 1, 1);
+            INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES ('系统运维工程师', '高级', 19, '精通', 1, 1);
+            `;
+            db.exec(insertStatements);
+        }
+
+        function initFilterBox() {
+            var jobNameSelect = document.getElementById('jobNameSelect');
+            jobNameSelect.innerHTML = '<option value="">全部</option>';
+            var stmt = db.prepare('SELECT DISTINCT JobName FROM JobInfo');
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                var option = document.createElement('option');
+                option.value = row.JobName;
+                option.textContent = row.JobName;
+                jobNameSelect.appendChild(option);
+            }
+            stmt.free();
+
+            document.getElementById('filterButton').addEventListener('click', function() {
+                filterConditions.jobName = document.getElementById('jobNameSelect').value;
+                filterConditions.jobLevel = document.getElementById('jobLevelSelect').value;
+                filterConditions.requirement = document.getElementById('requirementSelect').value;
+                loadDataAndRenderMindMap();
+            });
+        }
+
+        function initControlButtons() {
+            document.getElementById('expandAllButton').addEventListener('click', function() {
+                expandCollapseAll(false);
+            });
+            document.getElementById('collapseAllButton').addEventListener('click', function() {
+                expandCollapseAll(true);
+            });
+            document.getElementById('bulkEditButton').addEventListener('click', function() {
+                enterBulkEditMode();
+            });
+            document.getElementById('bulkEditCompleteButton').addEventListener('click', function() {
+                completeBulkEdit();
+            });
+        }
+
+        function expandCollapseAll(collapse) {
+            function traverse(node) {
+                node.collapsed = collapse;
+                if (node.children) {
+                    for (var i = 0; i < node.children.length; i++) {
+                        traverse(node.children[i]);
+                    }
+                }
+            }
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                traverse(knowledgeTree[i]);
+            }
+            redraw();
+        }
+
+        function enterBulkEditMode() {
+            isBulkEditMode = true;
+            selectedNodes = [];
+            document.getElementById('bulkEditButton').style.display = 'none';
+            document.getElementById('bulkEditCompleteButton').style.display = 'inline-block';
+            svg.classList.add('bulk-edit-mode');
+            redraw();
+        }
+
+        function completeBulkEdit() {
+            if (selectedNodes.length === 0) {
+                alert('请选择至少一个知识点节点进行批量编辑。');
+                return;
+            }
+            openBulkEditForm();
+        }
+
+        function openBulkEditForm() {
+            var stmt = db.prepare('SELECT JobName FROM JobInfo');
+            var jobNameSelect = document.getElementById('bulkRelationJobName');
+            jobNameSelect.innerHTML = '';
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                var option = document.createElement('option');
+                option.value = row.JobName;
+                option.textContent = row.JobName;
+                jobNameSelect.appendChild(option);
+            }
+            stmt.free();
+
+            document.getElementById('bulkEditFormModal').style.display = 'flex';
+        }
+
+        function closeBulkEditFormModal() {
+            document.getElementById('bulkEditFormModal').style.display = 'none';
+            exitBulkEditMode();
+        }
+
+        function saveBulkRelation(event) {
+            event.preventDefault();
+            var jobName = document.getElementById('bulkRelationJobName').value;
+            var jobLevel = document.getElementById('bulkRelationJobLevel').value;
+            var knowledgeRequirement = document.getElementById('bulkRelationRequirement').value;
+            var isRequired = document.getElementById('bulkRelationIsRequired').checked ? 1 : 0;
+            var isImportant = document.getElementById('bulkRelationIsImportant').checked ? 1 : 0;
+
+            for (var i = 0; i < selectedNodes.length; i++) {
+                var knowledgeId = selectedNodes[i];
+                var stmt = db.prepare('INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES (?, ?, ?, ?, ?, ?)');
+                stmt.run([jobName, jobLevel, knowledgeId, knowledgeRequirement, isRequired, isImportant]);
+                stmt.free();
+            }
+
+            closeBulkEditFormModal();
+            alert('批量编辑已保存。');
+            exitBulkEditMode();
+            loadDataAndRenderMindMap();
+        }
+
+        function exitBulkEditMode() {
+            isBulkEditMode = false;
+            selectedNodes = [];
+            document.getElementById('bulkEditButton').style.display = 'inline-block';
+            document.getElementById('bulkEditCompleteButton').style.display = 'none';
+            svg.classList.remove('bulk-edit-mode');
+            redraw();
+        }
+
+        function loadDataAndRenderMindMap() {
+            svg = document.getElementById('mindMap');
+            svg.innerHTML = '';
+
+            var knowledgePoints = [];
+
+            var stmt = db.prepare('SELECT * FROM Knowledge');
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                row.children = [];
+                knowledgePoints.push(row);
+            }
+            stmt.free();
+
+            knowledgeTreeMap = {};
+            for (var i = 0; i < knowledgePoints.length; i++) {
+                knowledgeTreeMap[knowledgePoints[i].KnowledgeId] = knowledgePoints[i];
+            }
+
+            // Build tree structure
+            for (var i = 0; i < knowledgePoints.length; i++) {
+                var node = knowledgePoints[i];
+                node.collapsed = false;
+                node.visible = true;
+                node.match = false;
+                if (node.ParentKnowledgeId !== null) {
+                    var parent = knowledgeTreeMap[node.ParentKnowledgeId];
+                    if (parent) {
+                        parent.children.push(node);
+                        node.parent = parent;
+                    }
+                }
+            }
+
+            knowledgeTree = [];
+            // Find root nodes
+            for (var key in knowledgeTreeMap) {
+                if (knowledgeTreeMap[key].ParentKnowledgeId === null) {
+                    knowledgeTree.push(knowledgeTreeMap[key]);
+                }
+            }
+
+            applyFilters();
+
+            // Add root node "岗位知识图谱"
+            var rootNode = {
+                KnowledgeId: 0,
+                KnowledgeName: '岗位知识图谱',
+                KnowledgeDescription: '',
+                ParentKnowledgeId: null,
+                children: [],
+                collapsed: false,
+                visible: true,
+                isRoot: true
+            };
+            knowledgeTreeMap[0] = rootNode;
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                rootNode.children.push(knowledgeTree[i]);
+                knowledgeTree[i].parent = rootNode;
+            }
+            knowledgeTree = [rootNode];
+
+            // If a job name is selected, change root node's name
+            if (filterConditions.jobName) {
+                rootNode.KnowledgeName = filterConditions.jobName;
+            } else {
+                rootNode.KnowledgeName = '岗位知识图谱';
+            }
+
+            // Count leaves and assign positions
+            totalLeafCount = 0;
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                countVisibleLeaves(knowledgeTree[i]);
+                if (knowledgeTree[i].leafCount > 0) {
+                    totalLeafCount += knowledgeTree[i].leafCount;
+                }
+            }
+
+            redraw();
+        }
+
+        function applyFilters() {
+            var filteredKnowledgeIds = new Set();
+
+            var query = 'SELECT DISTINCT KnowledgeId FROM JobKnowledgeRelation WHERE 1=1';
+            var params = [];
+            if (filterConditions.jobName) {
+                query += ' AND JobName = ?';
+                params.push(filterConditions.jobName);
+            }
+            if (filterConditions.jobLevel) {
+                query += ' AND JobLevel = ?';
+                params.push(filterConditions.jobLevel);
+            }
+            if (filterConditions.requirement) {
+                query += ' AND KnowledgeRequirement = ?';
+                params.push(filterConditions.requirement);
+            }
+
+            var stmt = db.prepare(query);
+            stmt.bind(params);
+
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                filteredKnowledgeIds.add(row.KnowledgeId);
+            }
+            stmt.free();
+
+            // Mark nodes that match the filter and their ancestors
+            function markNodeAndAncestors(node) {
+                node.visible = true;
+                if (node.parent) {
+                    markNodeAndAncestors(node.parent);
+                }
+            }
+
+            // Reset all nodes to not visible
+            for (var key in knowledgeTreeMap) {
+                knowledgeTreeMap[key].visible = false;
+            }
+
+            // If no filter is applied, show all nodes
+            if (!filterConditions.jobName && !filterConditions.jobLevel && !filterConditions.requirement) {
+                for (var key in knowledgeTreeMap) {
+                    knowledgeTreeMap[key].visible = true;
+                }
+            } else {
+                filteredKnowledgeIds.forEach(function(knowledgeId) {
+                    var node = knowledgeTreeMap[knowledgeId];
+                    if (node) {
+                        markNodeAndAncestors(node);
+                    }
+                });
+            }
+        }
+
+        function countVisibleLeaves(node) {
+            if (!node.visible) {
+                node.leafCount = 0;
+                return;
+            }
+            if (node.children.length === 0 || node.collapsed) {
+                node.leafCount = 1;
+            } else {
+                node.leafCount = 0;
+                for (var i = 0; i < node.children.length; i++) {
+                    countVisibleLeaves(node.children[i]);
+                    node.leafCount += node.children[i].leafCount;
+                }
+            }
+        }
+
+        function assignPositions(node, x0, x1, depth) {
+            if (!node.visible) return;
+            node.depth = depth;
+            node.x = (x0 + x1) / 2;
+            node.y = depth * (nodeHeight + verticalSpacing) + 50;
+            if (!node.collapsed && node.children && node.children.length > 0) {
+                var xStart = x0;
+                for (var i = 0; i < node.children.length; i++) {
+                    var child = node.children[i];
+                    if (child.leafCount > 0) {
+                        var xEnd = xStart + (child.leafCount / node.leafCount) * (x1 - x0);
+                        assignPositions(child, xStart, xEnd, depth + 1);
+                        xStart = xEnd;
+                    }
+                }
+            }
+        }
+
+        function drawLinks(node) {
+            if (!node.visible) return;
+            if (!node.collapsed && node.children && node.children.length > 0) {
+                for (var i = 0; i < node.children.length; i++) {
+                    var child = node.children[i];
+                    if (child.visible) {
+                        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        var pathData = 'M' + node.x + ',' + node.y + ' V' + (node.y + verticalSpacing / 2) + ' H' + child.x + ' V' + child.y;
+                        path.setAttribute('d', pathData);
+                        path.setAttribute('stroke', '#999');
+                        path.setAttribute('fill', 'none');
+                        svgGroup.appendChild(path);
+
+                        drawLinks(child);
+                    }
+                }
+            }
+        }
+
+        function drawNodes(node) {
+            if (!node.visible) return;
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', 'translate(' + (node.x - nodeWidth / 2) + ',' + (node.y - nodeHeight / 2) + ')');
+
+            var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('width', nodeWidth);
+            rect.setAttribute('height', nodeHeight);
+            rect.setAttribute('rx', 5);
+            rect.setAttribute('ry', 5);
+
+            // 设置节点样式
+            if (isBulkEditMode && selectedNodes.includes(node.KnowledgeId)) {
+                rect.setAttribute('fill', '#cce5ff'); // 浅蓝色
+                rect.setAttribute('stroke', '#007bff');
+                rect.setAttribute('stroke-width', '2');
+            } else {
+                rect.setAttribute('fill', '#fff');
+                rect.setAttribute('stroke', '#000');
+                rect.setAttribute('stroke-width', '1');
+            }
+
+            g.appendChild(rect);
+
+            var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', nodeWidth / 2);
+            text.setAttribute('y', nodeHeight / 2 + 5);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.textContent = node.KnowledgeName;
+            g.appendChild(text);
+
+            // Display relation count if exists
+            var relationCount = getRelationCount(node.KnowledgeId);
+            if (relationCount > 0) {
+                var countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                countText.setAttribute('x', nodeWidth - 10);
+                countText.setAttribute('y', nodeHeight - 5);
+                countText.setAttribute('text-anchor', 'end');
+                countText.setAttribute('dominant-baseline', 'auto');
+                countText.setAttribute('font-size', '12px');
+                countText.textContent = relationCount;
+                countText.setAttribute('fill', '#007bff');
+                g.appendChild(countText);
+            }
+
+            // Collapse/Expand indicator
+            if (node.children && node.children.length > 0 && !node.isRoot) {
+                var indicator = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                indicator.setAttribute('x', nodeWidth - 15);
+                indicator.setAttribute('y', 15);
+                indicator.setAttribute('text-anchor', 'middle');
+                indicator.setAttribute('dominant-baseline', 'middle');
+                indicator.setAttribute('font-size', '16px');
+                indicator.textContent = node.collapsed ? '+' : '-';
+                indicator.style.cursor = 'pointer';
+                g.appendChild(indicator);
+
+                indicator.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    toggleCollapse(node);
+                });
+            }
+
+            if (isBulkEditMode) {
+                g.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    toggleNodeSelection(node);
+                });
+            } else {
+                g.addEventListener('mouseover', function(event) {
+                    showTooltip(node, event);
+                });
+                g.addEventListener('mouseout', function(event) {
+                    hideTooltip();
+                });
+                g.addEventListener('click', function(event) {
+                    showJobKnowledgeRelations(node);
+                });
+            }
+
+            svgGroup.appendChild(g);
+
+            if (!node.collapsed && node.children && node.children.length > 0) {
+                for (var i = 0; i < node.children.length; i++) {
+                    drawNodes(node.children[i]);
+                }
+            }
+        }
+
+        function getRelationCount(knowledgeId) {
+            var stmt = db.prepare('SELECT COUNT(*) AS count FROM JobKnowledgeRelation WHERE KnowledgeId = ?');
+            stmt.bind([knowledgeId]);
+            var count = 0;
+            if (stmt.step()) {
+                var row = stmt.getAsObject();
+                count = row.count;
+            }
+            stmt.free();
+            return count;
+        }
+
+        function toggleNodeSelection(node) {
+            var index = selectedNodes.indexOf(node.KnowledgeId);
+            if (index === -1) {
+                selectedNodes.push(node.KnowledgeId);
+            } else {
+                selectedNodes.splice(index, 1);
+            }
+            redraw();
+        }
+
+        function showJobKnowledgeRelations(node) {
+            if (isBulkEditMode) return; // Do nothing in bulk edit mode
+            var knowledgeId = node.KnowledgeId;
+
+            var stmt = db.prepare('SELECT * FROM JobKnowledgeRelation WHERE KnowledgeId = ?');
+            stmt.bind([knowledgeId]);
+
+            var relations = [];
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                relations.push(row);
+            }
+            stmt.free();
+
+            var relationList = document.getElementById('relationList');
+            relationList.innerHTML = '';
+            if (relations.length > 0) {
+                var table = document.createElement('table');
+                var thead = document.createElement('thead');
+                var headerRow = document.createElement('tr');
+                ['岗位名称', '岗位级别', '知识点要求', '是否必备', '是否重要', '操作'].forEach(function(text) {
+                    var th = document.createElement('th');
+                    th.textContent = text;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                var tbody = document.createElement('tbody');
+                for (var i = 0; i < relations.length; i++) {
+                    var row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${relations[i].JobName}</td>
+                        <td>${relations[i].JobLevel}</td>
+                        <td>${relations[i].KnowledgeRequirement}</td>
+                        <td>${relations[i].IsRequired ? '是' : '否'}</td>
+                        <td>${relations[i].IsImportant ? '是' : '否'}</td>
+                        <td>
+                            <button onclick="openRelationForm(${relations[i].RelationId})">编辑</button>
+                            <button onclick="deleteRelation(${relations[i].RelationId})">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                }
+                table.appendChild(tbody);
+                relationList.appendChild(table);
+            } else {
+                relationList.textContent = '暂无关联的岗位知识关系。';
+            }
+
+            // Prepare for new relation creation
+            window.currentKnowledgeNode = node;
+
+            openRelationDetails();
+        }
+
+        function openRelationDetails() {
+            document.getElementById('relationDetails').style.display = 'block';
+        }
+
+        function closeRelationDetails() {
+            document.getElementById('relationDetails').style.display = 'none';
+        }
+
+        function toggleCollapse(node) {
+            node.collapsed = !node.collapsed;
+            redraw();
+        }
+
+        function initZoomAndPan() {
+            var isPanning = false;
+            var startPoint = { x: 0, y: 0 };
+            var svgElement = document.getElementById('mindMap');
+
+            svgElement.addEventListener('wheel', function(event) {
+                event.preventDefault();
+                var delta = event.deltaY > 0 ? 0.9 : 1.1;
+                zoomLevel *= delta;
+                redraw();
+            });
+
+            svgElement.addEventListener('mousedown', function(event) {
+                isPanning = true;
+                startPoint = { x: event.clientX, y: event.clientY };
+            });
+
+            svgElement.addEventListener('mousemove', function(event) {
+                if (isPanning) {
+                    var dx = event.clientX - startPoint.x;
+                    var dy = event.clientY - startPoint.y;
+                    panOffset.x += dx;
+                    panOffset.y += dy;
+                    startPoint = { x: event.clientX, y: event.clientY };
+                    redraw();
+                }
+            });
+
+            svgElement.addEventListener('mouseup', function(event) {
+                isPanning = false;
+            });
+
+            svgElement.addEventListener('mouseleave', function(event) {
+                isPanning = false;
+            });
+        }
+
+        function redraw() {
+            svg.innerHTML = '';
+            svgGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            svgGroup.setAttribute('transform', 'translate(' + panOffset.x + ',' + panOffset.y + ') scale(' + zoomLevel + ')');
+            svg.appendChild(svgGroup);
+
+            // Recalculate positions
+            totalLeafCount = 0;
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                countVisibleLeaves(knowledgeTree[i]);
+                if (knowledgeTree[i].leafCount > 0) {
+                    totalLeafCount += knowledgeTree[i].leafCount;
+                }
+            }
+
+            var totalWidth = totalLeafCount * (nodeWidth + horizontalSpacing);
+            var x0 = 0;
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                var node = knowledgeTree[i];
+                if (node.leafCount > 0) {
+                    var nodeWidthPortion = (node.leafCount / totalLeafCount) * totalWidth;
+                    assignPositions(node, x0, x0 + nodeWidthPortion, 0);
+                    x0 += nodeWidthPortion;
+                }
+            }
+
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                drawLinks(knowledgeTree[i]);
+            }
+            for (var i = 0; i < knowledgeTree.length; i++) {
+                drawNodes(knowledgeTree[i]);
+            }
+        }
+
+        function showTooltip(node, event) {
+            var tooltip = document.getElementById('tooltip');
+            tooltip.textContent = node.KnowledgeDescription || '无介绍';
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY + 10) + 'px';
+            tooltip.style.display = 'block';
+        }
+
+        function hideTooltip() {
+            var tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+
+        function openRelationForm(relationId) {
+            var stmt = db.prepare('SELECT JobName FROM JobInfo');
+            var jobNameSelect = document.getElementById('relationJobName');
+            jobNameSelect.innerHTML = '';
+            while (stmt.step()) {
+                var row = stmt.getAsObject();
+                var option = document.createElement('option');
+                option.value = row.JobName;
+                option.textContent = row.JobName;
+                jobNameSelect.appendChild(option);
+            }
+            stmt.free();
+
+            if (relationId) {
+                var stmt = db.prepare('SELECT * FROM JobKnowledgeRelation WHERE RelationId = ?');
+                stmt.bind([relationId]);
+                var relation;
+                if (stmt.step()) {
+                    relation = stmt.getAsObject();
+                }
+                stmt.free();
+
+                if (relation) {
+                    document.getElementById('relationId').value = relation.RelationId;
+                    document.getElementById('relationJobName').value = relation.JobName;
+                    document.getElementById('relationJobLevel').value = relation.JobLevel;
+                    document.getElementById('relationRequirement').value = relation.KnowledgeRequirement;
+                    document.getElementById('relationIsRequired').checked = relation.IsRequired ? true : false;
+                    document.getElementById('relationIsImportant').checked = relation.IsImportant ? true : false;
+                }
+            } else {
+                document.getElementById('relationId').value = '';
+                document.getElementById('relationJobName').value = '';
+                document.getElementById('relationJobLevel').value = '实习';
+                document.getElementById('relationRequirement').value = '了解';
+                document.getElementById('relationIsRequired').checked = false;
+                document.getElementById('relationIsImportant').checked = false;
+            }
+
+            document.getElementById('relationFormModal').style.display = 'flex';
+        }
+
+        function closeRelationFormModal() {
+            document.getElementById('relationFormModal').style.display = 'none';
+        }
+
+        function saveRelation(event) {
+            event.preventDefault();
+            var relationId = document.getElementById('relationId').value;
+            var jobName = document.getElementById('relationJobName').value;
+            var jobLevel = document.getElementById('relationJobLevel').value;
+            var knowledgeRequirement = document.getElementById('relationRequirement').value;
+            var isRequired = document.getElementById('relationIsRequired').checked ? 1 : 0;
+            var isImportant = document.getElementById('relationIsImportant').checked ? 1 : 0;
+            var knowledgeId = window.currentKnowledgeNode.KnowledgeId;
+
+            if (relationId) {
+                // Update existing relation
+                var stmt = db.prepare('UPDATE JobKnowledgeRelation SET JobName = ?, JobLevel = ?, KnowledgeRequirement = ?, IsRequired = ?, IsImportant = ? WHERE RelationId = ?');
+                stmt.run([jobName, jobLevel, knowledgeRequirement, isRequired, isImportant, relationId]);
+                stmt.free();
+            } else {
+                // Insert new relation
+                var stmt = db.prepare('INSERT INTO JobKnowledgeRelation (JobName, JobLevel, KnowledgeId, KnowledgeRequirement, IsRequired, IsImportant) VALUES (?, ?, ?, ?, ?, ?)');
+                stmt.run([jobName, jobLevel, knowledgeId, knowledgeRequirement, isRequired, isImportant]);
+                stmt.free();
+            }
+
+            closeRelationFormModal();
+            showJobKnowledgeRelations(window.currentKnowledgeNode);
+            loadDataAndRenderMindMap();
+        }
+
+        function deleteRelation(relationId) {
+            var stmt = db.prepare('DELETE FROM JobKnowledgeRelation WHERE RelationId = ?');
+            stmt.run([relationId]);
+            stmt.free();
+
+            showJobKnowledgeRelations(window.currentKnowledgeNode);
+            loadDataAndRenderMindMap();
+        }
+    </script>
+</body>
+</html>
