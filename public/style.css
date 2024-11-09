@@ -1,9 +1,11 @@
 /* public/style.css */
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     overflow: hidden;
 }
+
 #filterBox {
     padding: 10px;
     background-color: #f5f5f5;
@@ -11,11 +13,14 @@ body {
     top: 0;
     width: 100%;
     z-index: 2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
 #filterBox select {
     margin-right: 10px;
     padding: 5px;
 }
+
 #mindMapContainer {
     position: absolute;
     top: 70px;
@@ -25,9 +30,10 @@ body {
     overflow: hidden;
     background-color: #fff;
 }
+
 .tooltip {
     position: absolute;
-    background: #fff;
+    background: rgba(255, 255, 255, 0.9);
     padding: 8px;
     border: 1px solid #ccc;
     display: none;
@@ -35,17 +41,30 @@ body {
     font-size: 12px;
     box-shadow: 0 0 5px rgba(0,0,0,0.1);
     z-index: 3;
+    border-radius: 4px;
 }
+
 .control-buttons {
     position: fixed;
     top: 70px;
     right: 10px;
     z-index: 2;
 }
+
 .control-buttons button {
     margin: 5px;
     padding: 5px 10px;
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
 }
+
+.control-buttons button:hover {
+    background-color: #357ab8;
+}
+
 #relationDetails {
     position: fixed;
     bottom: 0;
@@ -57,13 +76,18 @@ body {
     overflow-y: auto;
     display: none;
     z-index: 2;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
 }
+
 #relationDetails .header {
     padding: 10px;
     font-weight: bold;
     position: relative;
     border-bottom: 1px solid #ccc;
+    background-color: #f0f0f0;
+    font-size: 16px;
 }
+
 #relationDetails .close-button {
     position: absolute;
     right: 10px;
@@ -71,29 +95,63 @@ body {
     cursor: pointer;
     font-size: 18px;
     line-height: 18px;
+    color: #888;
 }
+
+#relationDetails .close-button:hover {
+    color: #333;
+}
+
 #relationDetails .content {
     padding: 10px;
 }
-/* Enhanced styles for better appearance */
+
+#relationDetails button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+#relationDetails button:hover {
+    background-color: #357ab8;
+}
+
+/* 增强样式 */
 #mindMap rect {
     cursor: pointer;
+    rx: 5px;
+    ry: 5px;
 }
+
 #mindMap text {
     cursor: pointer;
 }
+
+.link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 10px;
 }
+
 table, th, td {
     border: 1px solid #ccc;
 }
+
 th, td {
     padding: 8px;
     text-align: left;
 }
+
 .modal {
     position: fixed;
     background: rgba(0,0,0,0.5);
@@ -103,6 +161,7 @@ th, td {
     align-items: center;
     z-index: 10;
 }
+
 .modal-content {
     background: #fff;
     padding: 20px;
@@ -110,27 +169,72 @@ th, td {
     max-height: 80%;
     overflow-y: auto;
     border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
+
 .modal-header {
     font-weight: bold;
     margin-bottom: 10px;
     position: relative;
+    font-size: 18px;
 }
+
 .modal-header .close-button {
     position: absolute;
-    right: 0;
+    right: 10px;
     top: 0;
     cursor: pointer;
-    font-size: 18px;
-    line-height: 18px;
+    font-size: 20px;
+    line-height: 20px;
+    color: #888;
 }
+
+.modal-header .close-button:hover {
+    color: #333;
+}
+
 .form-group {
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
+
 .form-group label {
     display: inline-block;
-    width: 100px;
+    width: 120px;
+    font-weight: bold;
 }
+
+.form-group select, .form-group input[type="checkbox"] {
+    padding: 5px;
+}
+
 button {
     cursor: pointer;
+    font-size: 14px;
+}
+
+/* 上下文菜单样式 */
+.context-menu {
+    position: absolute;
+    display: none;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+    z-index: 1000;
+    width: 150px;
+    border-radius: 4px;
+}
+
+.context-menu ul {
+    list-style: none;
+    padding: 5px 0;
+    margin: 0;
+}
+
+.context-menu ul li {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.context-menu ul li:hover {
+    background-color: #f5f5f5;
 }
