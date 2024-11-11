@@ -33,7 +33,7 @@ function resize() {
     d3.select('#mindMap')
         .attr('width', width)
         .attr('height', height);
-    tree.nodeSize([40, 500]); // 更新 nodeSize 的水平间距为 500
+    tree.nodeSize([40, 250]); // 更新 nodeSize 的水平间距为 500
     update(root);
 }
 
@@ -202,25 +202,21 @@ function loadDataAndRenderMindMap() {
         });
 
         // 查找根节点
-        var roots = knowledgePoints.filter(node => node.ParentKnowledgeId === null);
+        var knowledgePoints = knowledgePoints.filter(node => node.ParentKnowledgeId === null);
 
-        // 创建虚拟根节点
-        var virtualRoot = {
+
+        // 应用过滤条件
+        knowledgePoints = applyFilters(knowledgePoints, relations);
+
+        // 构建 D3.js 的层次结构
+        root = d3.hierarchy({
             KnowledgeId: 0,
             KnowledgeName: filterConditions.jobName || '岗位知识图谱',
             KnowledgeDescription: '',
             ParentKnowledgeId: null,
-            children: roots,
+            children: knowledgePoints,
             parent: null
-        };
-
-        knowledgeTreeMap[0] = virtualRoot;
-
-        // 应用过滤条件
-        applyFilters(knowledgeTreeMap, relations);
-
-        // 构建 D3.js 的层次结构
-        root = d3.hierarchy(virtualRoot, d => d.children);
+        }, d => d.children);
 
         // 初始时仅展开根节点的直接子节点，并确保这些子节点的子节点保持折叠
         root.children.forEach(child => {
@@ -244,39 +240,60 @@ function loadDataAndRenderMindMap() {
 }
 
 function applyFilters(knowledgeTreeMap, relations) {
-    var filteredKnowledgeIds = new Set(relations.map(rel => rel.KnowledgeId));
 
-    // 标记匹配的节点及其祖先节点
-    function markNodeAndAncestors(node) {
-        node.visible = true;
-        if (node.parent) {
-            markNodeAndAncestors(node.parent);
-        }
-    }
-
-    // 重置所有节点为不可见
-    for (var key in knowledgeTreeMap) {
-        knowledgeTreeMap[key].visible = false;
-    }
-
-    // 如果没有过滤条件，显示所有节点
-    if (!filterConditions.jobName && !filterConditions.jobLevel && !filterConditions.requirement) {
-        for (var key in knowledgeTreeMap) {
-            knowledgeTreeMap[key].visible = true;
-        }
-    } else {
-        filteredKnowledgeIds.forEach(knowledgeId => {
-            var node = knowledgeTreeMap[knowledgeId];
-            if (node) {
-                markNodeAndAncestors(node);
+    function markVisibleChildrenNodes(node) {
+        if(node.children){
+            for(var childrenNode in node.children){
+                node.children[childrenNode].visible = true;
+                markVisibleChildrenNodes(node.children[childrenNode]);
             }
-        });
+        }
     }
 
-    // 确保虚拟根节点始终可见
-    if (knowledgeTreeMap[0]) {
-        knowledgeTreeMap[0].visible = true;
+    function markVisibleParentNodes(node) {
+        if(node.parent){
+            node.parent.visible = true;
+            markVisibleParentNodes(node.parent);
+        }
     }
+
+    function markVisibleNodes(nodes, filteredKnowledgeIds) {
+        for(var key in nodes){
+            if(filteredKnowledgeIds.has(nodes[key].KnowledgeId)){
+                nodes[key].visible = true;
+                markVisibleParentNodes(nodes[key]);
+                markVisibleChildrenNodes(nodes[key]);
+            }else  if(nodes[key].children){
+                markVisibleNodes(nodes[key].children, filteredKnowledgeIds)
+            }
+        }
+    }
+
+    function buildVisibleNodes(knowledgeTreeMap) {
+        var visibleMap = [];
+        for(var key in knowledgeTreeMap){
+          if(knowledgeTreeMap[key].visible){
+              var children = buildVisibleNodes(knowledgeTreeMap[key].children);
+              visibleMap.push({
+                    KnowledgeId: knowledgeTreeMap[key].KnowledgeId,
+                    KnowledgeName: knowledgeTreeMap[key].KnowledgeName,
+                    KnowledgeDescription: knowledgeTreeMap[key].KnowledgeDescription,
+                    ParentKnowledgeId: knowledgeTreeMap[key].ParentKnowledgeId,
+                    children: children
+                });
+          }
+        }
+        return visibleMap;
+    }
+
+    if (filterConditions.jobName || filterConditions.jobLevel || filterConditions.requirement) {
+        var filteredKnowledgeIds = new Set(relations.map(rel => rel.KnowledgeId));
+        markVisibleNodes(knowledgeTreeMap, filteredKnowledgeIds)
+        return buildVisibleNodes(knowledgeTreeMap);
+    }else{
+        return knowledgeTreeMap;
+    }
+    
 }
 
 function renderMindMap() {
@@ -301,7 +318,7 @@ function renderMindMap() {
 
     // 创建树布局
     tree = d3.tree()
-        .nodeSize([40, 500]) // [垂直间距, 更宽的水平间距]
+        .nodeSize([40, 250]) // [垂直间距, 更宽的水平间距]
         .separation(function(a, b) {
             return a.parent === b.parent ? 1 : 1.5;
         });
@@ -324,17 +341,9 @@ function update(source) {
     // 分配节点的位置
     var treeData = tree(root);
 
-    // 判断是否有过滤条件
-    var filtersActive = filterConditions.jobName || filterConditions.jobLevel || filterConditions.requirement;
-
     // 计算新的树布局
-    var nodes = filtersActive
-        ? treeData.descendants().filter(d => d.data.visible)
-        : treeData.descendants();
-
-    var links = filtersActive
-        ? treeData.links().filter(d => d.source.data.visible && d.target.data.visible)
-        : treeData.links();
+    var nodes = treeData.descendants();
+    var links = treeData.links();
 
     // 节点
     var node = g.selectAll('g.node')
