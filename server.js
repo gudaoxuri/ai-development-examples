@@ -7,6 +7,22 @@ const path = require('path');
 const app = express();
 const db = new sqlite3.Database('./database.sqlite');
 
+app.use((req, res, next) => {
+  const auth = { login: 'jzy', password: 'dE3254D$#' };
+
+  // 解析认证头信息
+  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+  // 验证登录信息
+  if (login && password && login === auth.login && password === auth.password) {
+    return next();
+  }
+
+  // 认证失败
+  res.set('WWW-Authenticate', 'Basic realm="401"');
+  res.status(401).send('需要认证');
+});
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
