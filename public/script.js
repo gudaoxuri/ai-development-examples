@@ -257,14 +257,16 @@ function applyFilters(knowledgeTreeMap, relations) {
         }
     }
 
-    function markVisibleNodes(nodes, filteredKnowledgeIds) {
+    function markVisibleNodes(nodes) {
         for(var key in nodes){
-            if(filteredKnowledgeIds.has(nodes[key].KnowledgeId)){
+            var filterRelations = relations.filter(relation => relation.KnowledgeId === nodes[key].KnowledgeId);
+            if(filterRelations.length > 0){
+                nodes[key].relations = filterRelations;
                 nodes[key].visible = true;
                 markVisibleParentNodes(nodes[key]);
                 markVisibleChildrenNodes(nodes[key]);
             }else  if(nodes[key].children){
-                markVisibleNodes(nodes[key].children, filteredKnowledgeIds)
+                markVisibleNodes(nodes[key].children)
             }
         }
     }
@@ -279,6 +281,7 @@ function applyFilters(knowledgeTreeMap, relations) {
                     KnowledgeName: knowledgeTreeMap[key].KnowledgeName,
                     KnowledgeDescription: knowledgeTreeMap[key].KnowledgeDescription,
                     ParentKnowledgeId: knowledgeTreeMap[key].ParentKnowledgeId,
+                    relations: knowledgeTreeMap[key].relations,
                     children: children
                 });
           }
@@ -287,8 +290,7 @@ function applyFilters(knowledgeTreeMap, relations) {
     }
 
     if (filterConditions.jobName || filterConditions.jobLevel || filterConditions.requirement) {
-        var filteredKnowledgeIds = new Set(relations.map(rel => rel.KnowledgeId));
-        markVisibleNodes(knowledgeTreeMap, filteredKnowledgeIds)
+        markVisibleNodes(knowledgeTreeMap)
         return buildVisibleNodes(knowledgeTreeMap);
     }else{
         return knowledgeTreeMap;
@@ -391,8 +393,12 @@ function update(source) {
         .attr('x', d => d.textWidth + 15)
         .attr('text-anchor', 'start')
         .text(d => {
-            var count = relationCounts[d.data.KnowledgeId] || 0;
-            return count > 0 ? `(${count})` : '';
+            if(d.data.relations){
+                return d.data.relations.map(relation => {return relation.JobLevel + "/" + relation.KnowledgeRequirement}).join('\r\n');
+            }else{
+                var count = relationCounts[d.data.KnowledgeId] || 0;
+                return count > 0 ? `(${count})` : '';
+            }
         })
         .style('fill', '#007bff')
         .style('font-size', '12px')
